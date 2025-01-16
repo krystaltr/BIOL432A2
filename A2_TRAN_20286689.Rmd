@@ -1,0 +1,183 @@
+---
+title: "A2_TRAN_20286689"
+output: html_document
+date: "2025-01-14"
+---
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+library(dplyr)
+library(tidyverse)
+```
+PART 1: 
+```{r}
+bird <- read.csv("https://raw.githubusercontent.com/krystaltr/BIOL432A2/main/BirdBehaviour.csv")
+```
+
+```{r}
+head(bird)
+```
+
+
+```{r}
+summary(bird)
+```
+#To check missing value:
+```{r}
+any(is.na(bird))
+```
+--> There is no missing value in this data. 
+
+#To select the colums that contain behavioural data only and using box plot to check for outliers:
+```{r}
+boxplot(bird %>% select(Groom, Forage, Mate, Sleep)
+         , main = "Boxplots of Behavioural ")
+```
+Figure 1. The box plot illustrates the distribution of time spent on different behaviors across various bird species. Outliers are observed in the forage and sleep behaviors. These variations may reflect species-specific differences in behavior, which are influenced by their unique environmental adaptations and physiological needs. The y-axis represents the time spent in minutes and the x-axis represents the behaviours. 
+
+```{r}
+behaviour <- bird %>% select(Groom, Forage, Mate, Sleep)
+```
+
+```{r}
+skewness <- function(x) {n <- length(x)
+mean_x <- mean(x, na.rm = TRUE)
+sd_x <- sd(x, na.rm = TRUE)
+sum(((x - mean_x) / sd_x)^3) / n}
+```
+
+```{r}
+kurtosis <- function(x) {n <- length(x)
+mean_x <- mean(x, na.rm = TRUE)
+sd_x <- sd(x, na.rm = TRUE)
+sum(((x - mean_x) / sd_x)^4) / n - 3}
+```
+
+```{r}
+skewness <- sapply(behaviour, skewness)
+```
+
+```{r}
+kurtosis <- sapply(behaviour, kurtosis)
+```
+
+```{r}
+data.frame(Behavior = names(behaviour),
+  Skewness = skewness,
+  Kurtosis = kurtosis)
+```
+Table 1. This table shows the coefficient of skewness and kurtosis of the data. It shows some skewness and kurtosis ("tailedness"), indicating slight asymmetry and tails in the distributions of the behavioral variables. However, this data is a real-world data which means it may have minor departures from normality should not be a problem  as it accurately reflects the diversity and complexity of the observed behaviors. for that reason, there is no need to change or remove any values from the data. 
+
+```{r}
+bird2 <- bird %>%
+  pivot_longer(cols = c(Groom, Forage, Mate, Sleep),
+               names_to = "Behavior",
+               values_to = "Time")
+```
+
+```{r}
+ggplot(bird2, aes(x = Species, y = Time, fill = Species)) +
+  geom_boxplot() +
+  facet_wrap(~ Behavior, scales = "free_y") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+Figure 2. This panel shows the boxplots of time spent on four different behaviors are Forage, Groom, Mate, and Sleep across six bird species: Carduelis carduelis, Erithacus rubecula, Parus major, Passer domesticus, Sturnus vulgaris, and Turdus merula. Each box represents the interquartile range (IQR) with a horizontal line at the median. Points outside the whiskers indicate potential outliers. 
+
+```{r}
+cor(behaviour)
+```
+Table 2. This table shows the correlation coefficients between the four behaviorals range from -1 to 1, where values close to 1 indicate a strong positive relationship, values close to -1 indicate a strong negative relationship, and values near 0 indicate no linear relationship.
+
+The table above shows the correlation coefficients between the four behavioral variables. For instance, the correlation coefficient between Groom and Mate is 0.48, indicating a positive relationship. This suggests that birds that spend more time grooming also tend to spend more time on mating behaviors. Conversely, the correlation coefficient for Forage and Sleep is 0.0179, which is close to zero, indicating no significant linear relationship between these two behaviors.
+The table also highlights trade-offs between certain activities. For example, the correlation coefficient between Forage and Groom is -0.271, and between Forage and Mate, it is -0.194. These negative correlations suggest that birds spending more time foraging tend to spend less time grooming or mating. Similarly, there is a trade-off between Sleep and other behaviors such as Groom and Mate. The correlation coefficient between Sleep and Groom is -0.258, while that between Sleep and Mate is -0.317, indicating that birds spending more time sleeping tend to allocate less time to grooming and mating behaviors.
+
+PART 2:
+```{r}
+scale(behaviour, center = T, scale = T)
+```
+The z-score scaling method is used to measure how many standard deviations each data point is away from the mean. This standardization ensures that all features are on the same scale, treating them equally in the analysis.
+
+```{r}
+pca <-(princomp(scale(behaviour, center = T, scale = T), cor = F))
+```
+
+```{r}
+print(pca)
+```
+The PCA was conducted using the behaviour data, which includes only the time spent on behaviors due to PCA requires numeric data to compute covariance or correlation matrices. The Species and ID columns were excluded because they are categorical and do not contribute to the numerical computations needed for PCA.
+Also, we use cor = F instead cor = T because the data have been standardized using z-scores, and allow us to specify the covariance matrix. 
+
+```{r}
+names(pca)
+```
+
+```{r}
+str(pca)
+```
+sdev: is the standard deviations of the principal component vecotrs
+loadings: is also known as eigenvectors that transform the original features into princial component
+center: is the mean of each feature before scaling
+scale: is the weight that apply to each feature druing scaling    
+n.obs: is the number of observations.    
+scores: is  principal component vectors for each observation. 
+call: is the function that was used to create the PCA object
+
+
+PART 3:
+```{r}
+scorestable <- cbind(bird, as.data.frame(pca$scores))
+```
+
+```{r}
+print(scorestable)
+```
+
+```{r}
+ggplot(scorestable, aes(x = Comp.1, y = Comp.2, color = Species)) +
+  geom_point(size = 3) +
+  theme_minimal()
+```
+Figure 3. The scatter plot of Comp.1 vs. Comp.2 illustrating distribution of species based on principal components, highlighting behavioral differences among species.
+
+```{r}
+ggplot(scorestable, aes(x = Comp.3, y = Comp.4, color = Species)) +
+  geom_point(size = 3) +
+  theme_minimal()
+```
+Figure 4.The scatter plot of Comp.3 vs. Comp.4 illustrates the distribution of species based on principal components.
+
+Based on the two plots, the Comp.1 vs. Comp.2 plot is the best choice for analyzing how species differ in their behavior because it demonstrates the most distinct separation between species, making it more effective for identifying behavioral differences among them. In the Comp.3 vs Comp 4. plot,  there are some species show partial overlap, indicating limited differentiation along these components.
+
+```{r}
+pca$loadings[,1:2]
+```
+Eigenvector loadings is how much the variable influences the principal component, which the sign is the direction and higher magnitude have stronger influences. 
+
+For Comp.1, Groom and Mate have strong positive loadings, indicating that these two behaviors are positively correlated. In contrast, Sleep and Forage have negative loadings, suggesting an inverse relationship with Groom and Mate. This implies that birds that spend more time grooming and mating tend to spend less time sleeping and foraging.
+
+For Comp.2, Forage and Mate have negative loadings, with Forage having a much stronger negative contribution. This shows that foraging behavior significantly drives this principal component in the negative direction, while mating behavior has a minimal influence on this component. On the other hand, Sleep and Groom have positive loadings, with Sleep contributing more strongly. This suggests an inverse relationship between Forage/Mate and Groom/Sleep.
+
+In the figure of Comp.1 vs Comp.2, show that: 
+Note: Comp.1 reflects the trade-off between grooming/mating behaviors (positive values) and foraging/sleeping behaviors (negative values).Comp.2 reflects the trade-off between foraging/mating (negative values) and sleeping/grooming (positive values).
+
+Carduelis carduelis (red): This species has lower Comp.2 values and higher Comp.1 values, suggesting a focus on behaviors associated with grooming and mating while showing less emphasis on sleeping and grooming behaviors.
+
+Turdus merula (pink): With higher values for both Comp.1 and Comp.2, this species places significant emphasis on grooming, mating, and sleeping behaviors. 
+
+Parus major (green): This species has higher Comp.1 values, suggesting a strong focus on grooming and mating behaviors.
+
+Passer domesticus (teal): With higher Comp.2 values, this species emphasizes sleeping and grooming behaviors, with less focus on foraging and mating.
+
+Erithacus rubecula (yellow): This species is more evenly distributed across both Comp.1 and Comp.2, reflecting a balanced approach to various behaviors.
+
+Sturnus vulgaris (blue): This species is highly distinct, clustering at the bottom left of the plot. It focuses strongly on foraging behaviors while minimizing time spent on sleeping and grooming, highlighting a specialized behavioral strategy.
+
+The best species is Erithacus rubecula as it demonstrates a balanced the time spent across behaviors, which might help in greater adaptability in the different environmental conditions. 
+
+
+
+
